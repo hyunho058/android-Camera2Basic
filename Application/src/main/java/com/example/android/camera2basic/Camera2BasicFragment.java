@@ -74,6 +74,8 @@ import java.util.concurrent.TimeUnit;
 public class Camera2BasicFragment extends Fragment
         implements View.OnClickListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
+    String mTAG = "Camera2BasicFragment";
+
     /**
      * Conversion from screen rotation to JPEG orientation.
      */
@@ -192,6 +194,7 @@ public class Camera2BasicFragment extends Fragment
             mCameraOpenCloseLock.release();
             mCameraDevice = cameraDevice;
             createCameraPreviewSession();
+            Log.v(mTAG,"onOpened");
         }
 
         @Override
@@ -199,6 +202,7 @@ public class Camera2BasicFragment extends Fragment
             mCameraOpenCloseLock.release();
             cameraDevice.close();
             mCameraDevice = null;
+            Log.v(mTAG,"onDisconnected");
         }
 
         @Override
@@ -210,6 +214,7 @@ public class Camera2BasicFragment extends Fragment
             if (null != activity) {
                 activity.finish();
             }
+            Log.v(mTAG,"onOpened");
         }
 
     };
