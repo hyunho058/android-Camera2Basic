@@ -45,6 +45,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
@@ -59,9 +60,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +80,11 @@ public class Camera2BasicFragment extends Fragment
         implements View.OnClickListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     String mTAG = "Camera2BasicFragment";
+    String name = "/ID:CAMERA";
+    Socket socket;
+    BufferedReader bufferedReader;
+    PrintWriter printWriter;
+    SharedObject sharedObject = new SharedObject();
 
     /**
      * Conversion from screen rotation to JPEG orientation.
@@ -129,6 +139,13 @@ public class Camera2BasicFragment extends Fragment
      * Max preview height that is guaranteed by Camera2 API
      */
     private static final int MAX_PREVIEW_HEIGHT = 1080;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        Log.v(mTAG,"onCreate()");
+        super.onCreate(savedInstanceState);
+        socketThread.start();
+    }
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
@@ -248,7 +265,7 @@ public class Camera2BasicFragment extends Fragment
 
         @Override
         public void onImageAvailable(ImageReader reader) {
-            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile , sharedObject));
         }
 
     };
@@ -292,6 +309,7 @@ public class Camera2BasicFragment extends Fragment
             = new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) {
+
             switch (mState) {
                 case STATE_PREVIEW: {
                     // We have nothing to do when the camera preview is working normally.
@@ -359,6 +377,7 @@ public class Camera2BasicFragment extends Fragment
      * @param text The message to show
      */
     private void showToast(final String text) {
+        Log.v(mTAG,"showToast()");
         final Activity activity = getActivity();
         if (activity != null) {
             activity.runOnUiThread(new Runnable() {
@@ -426,11 +445,13 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        Log.v(mTAG,"onCreateView()");
         return inflater.inflate(R.layout.fragment_camera2_basic, container, false);
     }
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
+        Log.v(mTAG,"onViewCreated()");
         view.findViewById(R.id.picture).setOnClickListener(this);
         view.findViewById(R.id.info).setOnClickListener(this);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
@@ -439,11 +460,13 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
+        Log.v(mTAG,"onActivityCreated()");
         mFile = new File(getActivity().getExternalFilesDir(null), "pic.jpg");
     }
 
     @Override
     public void onResume() {
+        Log.v(mTAG,"onResume()");
         super.onResume();
         startBackgroundThread();
 
@@ -460,12 +483,14 @@ public class Camera2BasicFragment extends Fragment
 
     @Override
     public void onPause() {
+        Log.v(mTAG,"onPause");
         closeCamera();
         stopBackgroundThread();
         super.onPause();
     }
 
     private void requestCameraPermission() {
+        Log.v(mTAG,"requestCameraPermission()");
         if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
             new ConfirmationDialog().show(getChildFragmentManager(), FRAGMENT_DIALOG);
         } else {
@@ -476,6 +501,7 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
+        Log.v(mTAG,"onRequestPermissionsResult()");
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (grantResults.length != 1 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 ErrorDialog.newInstance(getString(R.string.request_permission))
@@ -494,6 +520,7 @@ public class Camera2BasicFragment extends Fragment
      */
     @SuppressWarnings("SuspiciousNameCombination")
     private void setUpCameraOutputs(int width, int height) {
+        Log.v(mTAG,"setUpCameraOutputs()");
         Activity activity = getActivity();
         CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -605,6 +632,7 @@ public class Camera2BasicFragment extends Fragment
      * Opens the camera specified by {@link Camera2BasicFragment#mCameraId}.
      */
     private void openCamera(int width, int height) {
+        Log.v(mTAG,"openCamera()");
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
             requestCameraPermission();
@@ -630,6 +658,7 @@ public class Camera2BasicFragment extends Fragment
      * Closes the current {@link CameraDevice}.
      */
     private void closeCamera() {
+        Log.v(mTAG,"closeCamera()");
         try {
             mCameraOpenCloseLock.acquire();
             if (null != mCaptureSession) {
@@ -655,6 +684,7 @@ public class Camera2BasicFragment extends Fragment
      * Starts a background thread and its {@link Handler}.
      */
     private void startBackgroundThread() {
+        Log.v(mTAG,"startBackgroundThread()");
         mBackgroundThread = new HandlerThread("CameraBackground");
         mBackgroundThread.start();
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
@@ -664,6 +694,7 @@ public class Camera2BasicFragment extends Fragment
      * Stops the background thread and its {@link Handler}.
      */
     private void stopBackgroundThread() {
+        Log.v(mTAG,"stopBackgroundThread()");
         mBackgroundThread.quitSafely();
         try {
             mBackgroundThread.join();
@@ -678,6 +709,7 @@ public class Camera2BasicFragment extends Fragment
      * Creates a new {@link CameraCaptureSession} for camera preview.
      */
     private void createCameraPreviewSession() {
+        Log.v(mTAG,"createCameraPreviewSession()");
         try {
             SurfaceTexture texture = mTextureView.getSurfaceTexture();
             assert texture != null;
@@ -743,6 +775,7 @@ public class Camera2BasicFragment extends Fragment
      * @param viewHeight The height of `mTextureView`
      */
     private void configureTransform(int viewWidth, int viewHeight) {
+        Log.v(mTAG,"configureTransform()");
         Activity activity = getActivity();
         if (null == mTextureView || null == mPreviewSize || null == activity) {
             return;
@@ -778,6 +811,7 @@ public class Camera2BasicFragment extends Fragment
      * Lock the focus as the first step for a still image capture.
      */
     private void lockFocus() {
+        Log.v(mTAG,"lockFocus()");
         try {
             // This is how to tell the camera to lock focus.
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
@@ -796,6 +830,7 @@ public class Camera2BasicFragment extends Fragment
      * we get a response in {@link #mCaptureCallback} from {@link #lockFocus()}.
      */
     private void runPrecaptureSequence() {
+        Log.v(mTAG,"runPrecaptureSequence()");
         try {
             // This is how to tell the camera to trigger.
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
@@ -814,6 +849,7 @@ public class Camera2BasicFragment extends Fragment
      * {@link #mCaptureCallback} from both {@link #lockFocus()}.
      */
     private void captureStillPicture() {
+        Log.v(mTAG,"captureStillPicture()");
         try {
             final Activity activity = getActivity();
             if (null == activity || null == mCameraDevice) {
@@ -842,6 +878,7 @@ public class Camera2BasicFragment extends Fragment
                                                @NonNull TotalCaptureResult result) {
                     showToast("Saved: " + mFile);
                     Log.d(TAG, mFile.toString());
+                    Log.v(mTAG,"mFile.toString()===="+mFile.toString());
                     unlockFocus();
                 }
             };
@@ -861,6 +898,7 @@ public class Camera2BasicFragment extends Fragment
      * @return The JPEG orientation (one of 0, 90, 270, and 360)
      */
     private int getOrientation(int rotation) {
+        Log.v(mTAG,"getOrientation()");
         // Sensor orientation is 90 for most devices, or 270 for some devices (eg. Nexus 5X)
         // We have to take that into account and rotate JPEG properly.
         // For devices with orientation of 90, we simply return our mapping from ORIENTATIONS.
@@ -873,6 +911,7 @@ public class Camera2BasicFragment extends Fragment
      * finished.
      */
     private void unlockFocus() {
+        Log.v(mTAG,"unlockFocus()");
         try {
             // Reset the auto-focus trigger
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
@@ -891,6 +930,7 @@ public class Camera2BasicFragment extends Fragment
 
     @Override
     public void onClick(View view) {
+        Log.v(mTAG,"onClick");
         switch (view.getId()) {
             case R.id.picture: {
                 takePicture();
@@ -910,6 +950,7 @@ public class Camera2BasicFragment extends Fragment
     }
 
     private void setAutoFlash(CaptureRequest.Builder requestBuilder) {
+        Log.v(mTAG,"setAutoFlash()");
         if (mFlashSupported) {
             requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
                     CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
@@ -929,14 +970,17 @@ public class Camera2BasicFragment extends Fragment
          * The file we save the image into.
          */
         private final File mFile;
+        SharedObject sharedObject1 = new SharedObject();
 
-        ImageSaver(Image image, File file) {
+        ImageSaver(Image image, File file, SharedObject sharedObject) {
             mImage = image;
             mFile = file;
+            sharedObject = sharedObject;
         }
 
         @Override
         public void run() {
+            Log.v("Camera2BasicFragment","ImageSaver");
             ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buffer.remaining()];
             buffer.get(bytes);
@@ -944,6 +988,8 @@ public class Camera2BasicFragment extends Fragment
             try {
                 output = new FileOutputStream(mFile);
                 output.write(bytes);
+                sharedObject1.put(bytes.toString());
+                /////////////////////////////////////////////////////////////////////////////////
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
@@ -1038,4 +1084,31 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
+    /**
+     * Socket Communication witA Server
+     */
+    Thread socketThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                socket = new Socket("70.12.60.98", 1357);
+                bufferedReader = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream()));
+                printWriter = new PrintWriter(socket.getOutputStream());
+
+                Log.v(TAG, "Socket Situation==" + socket.isConnected());
+                name=name.trim();
+                sharedObject.put(name+" IN");
+                Log.v(TAG,"name=="+name);
+
+                while (true) {
+                    String msg = sharedObject.pop();
+                    printWriter.println(msg);
+                    printWriter.flush();
+                }
+            } catch (IOException e) {
+                Log.v(TAG, "Socket Communication IOException==" + e);
+            }
+        }
+    });
 }
