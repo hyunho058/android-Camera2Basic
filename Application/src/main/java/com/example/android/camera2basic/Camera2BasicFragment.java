@@ -144,18 +144,20 @@ public class Camera2BasicFragment extends Fragment
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Log.v(mTAG,"onCreate()");
         super.onCreate(savedInstanceState);
-        socketThread.start();
+//        socketThread.start();
     }
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
      * {@link TextureView}.
+     * textureview가 화면에 정사엊ㄱ으로 호출되면 onSurfaceTextureAvailable()호출
      */
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
 
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
+            // cameraManager생성하는 메소드
             openCamera(width, height);
         }
 
@@ -267,7 +269,6 @@ public class Camera2BasicFragment extends Fragment
         public void onImageAvailable(ImageReader reader) {
             mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile , sharedObject));
         }
-
     };
 
     /**
@@ -970,7 +971,7 @@ public class Camera2BasicFragment extends Fragment
          * The file we save the image into.
          */
         private final File mFile;
-        SharedObject sharedObject1 = new SharedObject();
+        SharedObject sharedObject;
 
         ImageSaver(Image image, File file, SharedObject sharedObject) {
             mImage = image;
@@ -988,7 +989,7 @@ public class Camera2BasicFragment extends Fragment
             try {
                 output = new FileOutputStream(mFile);
                 output.write(bytes);
-                sharedObject1.put(bytes.toString());
+//                sharedObject.put(bytes.toString());
                 /////////////////////////////////////////////////////////////////////////////////
             } catch (IOException e) {
                 e.printStackTrace();
