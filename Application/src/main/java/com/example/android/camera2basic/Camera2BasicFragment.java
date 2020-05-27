@@ -50,6 +50,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -144,7 +145,7 @@ public class Camera2BasicFragment extends Fragment
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Log.v(mTAG,"onCreate()");
         super.onCreate(savedInstanceState);
-//        socketThread.start();
+        socketThread.start();
     }
 
     /**
@@ -267,7 +268,9 @@ public class Camera2BasicFragment extends Fragment
 
         @Override
         public void onImageAvailable(ImageReader reader) {
+            Log.v(mTAG,"onImageAvailable()");
             mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile , sharedObject));
+//            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile ));
         }
     };
 
@@ -973,10 +976,10 @@ public class Camera2BasicFragment extends Fragment
         private final File mFile;
         SharedObject sharedObject;
 
-        ImageSaver(Image image, File file, SharedObject sharedObject) {
+        ImageSaver(Image image, File file, SharedObject sharedObj) {
             mImage = image;
             mFile = file;
-            sharedObject = sharedObject;
+            sharedObject = sharedObj;
         }
 
         @Override
@@ -987,14 +990,23 @@ public class Camera2BasicFragment extends Fragment
             buffer.get(bytes);
             FileOutputStream output = null;
             try {
+
+                Log.v("Camera2BasicFragment","byteData====" +String.valueOf(bytes));
+                Log.v("Camera2BasicFragment","byteData====" +bytes[0]);
+                Log.v("Camera2BasicFragment","byteData====" +bytes.length);
+//                String serialized = Base64.encodeToString(bytes,Base64.DEFAULT);
+                String serialized = Base64.encodeToString(bytes,Base64.NO_WRAP);
+                Log.v("Camera2BasicFragment","byteData====" +serialized);
+                sharedObject.put("/CAMERA>IMAGE "+serialized);
+//                byte getByte[] = Base64.decodeBase64();
+
                 output = new FileOutputStream(mFile);
                 output.write(bytes);
-//                sharedObject.put(bytes.toString());
-                /////////////////////////////////////////////////////////////////////////////////
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 mImage.close();
+
                 if (null != output) {
                     try {
                         output.close();
@@ -1004,7 +1016,6 @@ public class Camera2BasicFragment extends Fragment
                 }
             }
         }
-
     }
 
     /**
